@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "a8f335a8-107b-44bc-9bca-527230c84ca6"
+      }
+    },
+    "android": {
+      "package": "com.reelsguard.workspace"
+    }
+  }
+}

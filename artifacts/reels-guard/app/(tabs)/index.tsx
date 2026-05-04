@@ -2,9 +2,7 @@ import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef } from "react";
 import {
-  Alert,
   Animated,
-  Image,
   Platform,
   ScrollView,
   StyleSheet,
@@ -21,7 +19,8 @@ function formatTime(seconds: number): string {
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = seconds % 60;
-  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  if (h > 0)
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
@@ -36,10 +35,10 @@ function formatMinutes(minutes: number): string {
 }
 
 const APPS = [
-  { name: "TikTok", color: "#010101", emoji: "🎵" },
-  { name: "Instagram", color: "#E1306C", emoji: "📷" },
-  { name: "YouTube", color: "#FF0000", emoji: "▶️" },
-  { name: "Facebook", color: "#1877F2", emoji: "📘" },
+  { name: "TikTok", emoji: "🎵" },
+  { name: "Instagram", emoji: "📷" },
+  { name: "YouTube", emoji: "▶️" },
+  { name: "Facebook", emoji: "📘" },
 ];
 
 export default function DashboardScreen() {
@@ -54,13 +53,11 @@ export default function DashboardScreen() {
     usedSeconds,
     timeLimitMinutes,
     progressPercent,
-    isSessionActive,
-    startSession,
-    endSession,
   } = useApp();
 
-  const pulseAnim = useRef(new Animated.Value(1)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const dotAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (!isLoading && !isOnboarded) {
@@ -69,9 +66,6 @@ export default function DashboardScreen() {
   }, [isLoading, isOnboarded]);
 
   useEffect(() => {
-    if (isBlocked && isSessionActive) {
-      endSession();
-    }
     if (isBlocked) {
       router.replace("/blocked");
     }
@@ -80,44 +74,64 @@ export default function DashboardScreen() {
   useEffect(() => {
     Animated.timing(progressAnim, {
       toValue: progressPercent,
-      duration: 600,
+      duration: 800,
       useNativeDriver: false,
     }).start();
   }, [progressPercent]);
 
+  // Pulse on the remaining time when close to limit
   useEffect(() => {
-    if (isSessionActive) {
+    if (progressPercent > 0.8) {
       const pulse = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.08, duration: 800, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+          Animated.timing(pulseAnim, {
+            toValue: 1.04,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
         ])
       );
       pulse.start();
       return () => pulse.stop();
-    } else {
-      pulseAnim.setValue(1);
     }
-  }, [isSessionActive]);
+  }, [progressPercent > 0.8]);
 
-  const handleSessionToggle = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (isSessionActive) {
-      await endSession();
-    } else {
-      startSession();
-    }
-  };
-
-  const handleSettings = async () => {
-    await Haptics.selectionAsync();
-    router.push("/settings");
-  };
+  // Blinking dot for "tracking" indicator
+  useEffect(() => {
+    const blink = Animated.loop(
+      Animated.sequence([
+        Animated.timing(dotAnim, {
+          toValue: 0.2,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(dotAnim, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    blink.start();
+    return () => blink.stop();
+  }, []);
 
   if (isLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>جاري التحميل...</Text>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
+          جاري التحميل...
+        </Text>
       </View>
     );
   }
@@ -130,8 +144,10 @@ export default function DashboardScreen() {
       ? colors.warning
       : colors.destructive;
 
-  const topPad = Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
-  const bottomPad = Platform.OS === "web" ? Math.max(insets.bottom, 34) : insets.bottom;
+  const topPad =
+    Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
+  const bottomPad =
+    Platform.OS === "web" ? Math.max(insets.bottom, 34) : insets.bottom;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -145,22 +161,66 @@ export default function DashboardScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={[styles.appName, { color: colors.primary }]}>ReelsGuard</Text>
-            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
-              مراقب وقت الريلز
+            <Text style={[styles.appName, { color: colors.primary }]}>
+              ReelsGuard
+            </Text>
+            <Text
+              style={[styles.subtitle, { color: colors.mutedForeground }]}
+            >
+              حارس وقت الريلز
             </Text>
           </View>
           <TouchableOpacity
-            style={[styles.settingsBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
-            onPress={handleSettings}
+            style={[
+              styles.settingsBtn,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+            ]}
+            onPress={async () => {
+              await Haptics.selectionAsync();
+              router.push("/settings");
+            }}
           >
             <Text style={{ fontSize: 20 }}>⚙️</Text>
           </TouchableOpacity>
         </View>
 
+        {/* Auto-tracking badge */}
+        <View
+          style={[
+            styles.trackingBadge,
+            {
+              backgroundColor: colors.success + "15",
+              borderColor: colors.success + "35",
+            },
+          ]}
+        >
+          <Animated.View
+            style={[
+              styles.trackingDot,
+              {
+                backgroundColor: colors.success,
+                opacity: dotAnim,
+              },
+            ]}
+          />
+          <Text style={[styles.trackingText, { color: colors.success }]}>
+            التتبع التلقائي نشط — العداد يعمل عند فتح الريلز
+          </Text>
+        </View>
+
         {/* Main Timer Card */}
-        <View style={[styles.timerCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.timerLabel, { color: colors.mutedForeground }]}>
+        <View
+          style={[
+            styles.timerCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <Text
+            style={[styles.timerLabel, { color: colors.mutedForeground }]}
+          >
             الوقت المتبقي اليوم
           </Text>
 
@@ -169,7 +229,10 @@ export default function DashboardScreen() {
               style={[
                 styles.timerText,
                 {
-                  color: progressPercent > 0.8 ? colors.destructive : colors.foreground,
+                  color:
+                    progressPercent > 0.8
+                      ? colors.destructive
+                      : colors.foreground,
                 },
               ]}
             >
@@ -177,12 +240,19 @@ export default function DashboardScreen() {
             </Text>
           </Animated.View>
 
-          <Text style={[styles.limitLabel, { color: colors.mutedForeground }]}>
+          <Text
+            style={[styles.limitLabel, { color: colors.mutedForeground }]}
+          >
             من أصل {formatMinutes(timeLimitMinutes)}
           </Text>
 
           {/* Progress Bar */}
-          <View style={[styles.progressBar, { backgroundColor: colors.secondary }]}>
+          <View
+            style={[
+              styles.progressBg,
+              { backgroundColor: colors.secondary },
+            ]}
+          >
             <Animated.View
               style={[
                 styles.progressFill,
@@ -197,57 +267,185 @@ export default function DashboardScreen() {
             />
           </View>
 
-          <Text style={[styles.usedLabel, { color: colors.mutedForeground }]}>
-            استُخدم {formatMinutes(usedMinutes)} من {formatMinutes(timeLimitMinutes)}
-          </Text>
+          {/* Stats row */}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text
+                style={[styles.statNum, { color: colors.foreground }]}
+              >
+                {usedMinutes}
+              </Text>
+              <Text
+                style={[
+                  styles.statLabel,
+                  { color: colors.mutedForeground },
+                ]}
+              >
+                دقيقة استُخدمت
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.statDivider,
+                { backgroundColor: colors.border },
+              ]}
+            />
+            <View style={styles.statItem}>
+              <Text
+                style={[styles.statNum, { color: colors.foreground }]}
+              >
+                {timeLimitMinutes}
+              </Text>
+              <Text
+                style={[
+                  styles.statLabel,
+                  { color: colors.mutedForeground },
+                ]}
+              >
+                الحد اليومي (د)
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.statDivider,
+                { backgroundColor: colors.border },
+              ]}
+            />
+            <View style={styles.statItem}>
+              <Text
+                style={[
+                  styles.statNum,
+                  {
+                    color:
+                      progressPercent > 0.8
+                        ? colors.destructive
+                        : colors.foreground,
+                  },
+                ]}
+              >
+                {Math.round(progressPercent * 100)}%
+              </Text>
+              <Text
+                style={[
+                  styles.statLabel,
+                  { color: colors.mutedForeground },
+                ]}
+              >
+                استُنفد
+              </Text>
+            </View>
+          </View>
         </View>
 
-        {/* Session Button */}
-        <TouchableOpacity
-          style={[
-            styles.sessionBtn,
-            {
-              backgroundColor: isSessionActive ? colors.destructive : colors.primary,
-            },
-          ]}
-          onPress={handleSessionToggle}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.sessionBtnIcon}>{isSessionActive ? "⏹" : "▶"}</Text>
-          <Text style={styles.sessionBtnText}>
-            {isSessionActive ? "إيقاف جلسة الريلز" : "بدء جلسة الريلز"}
-          </Text>
-        </TouchableOpacity>
-
-        {isSessionActive && (
-          <View style={[styles.liveBadge, { backgroundColor: colors.destructive + "20" }]}>
-            <View style={[styles.liveDot, { backgroundColor: colors.destructive }]} />
-            <Text style={[styles.liveText, { color: colors.destructive }]}>جلسة نشطة الآن</Text>
+        {/* Warning when close to limit */}
+        {progressPercent >= 0.8 && progressPercent < 1 && (
+          <View
+            style={[
+              styles.warnCard,
+              {
+                backgroundColor: colors.warning + "15",
+                borderColor: colors.warning + "40",
+              },
+            ]}
+          >
+            <Text style={[styles.warnText, { color: colors.warning }]}>
+              ⚠️ اقتربت من حدك اليومي! تبقى{" "}
+              {formatTime(remainingSeconds)} فقط
+            </Text>
           </View>
         )}
 
-        {/* Apps Row */}
-        <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
-          التطبيقات المراقبة
+        {/* How it works */}
+        <Text
+          style={[styles.sectionTitle, { color: colors.mutedForeground }]}
+        >
+          كيف يعمل التتبع
         </Text>
-        <View style={styles.appsRow}>
-          {APPS.map((app) => (
-            <View key={app.name} style={[styles.appChip, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Text style={{ fontSize: 22 }}>{app.emoji}</Text>
-              <Text style={[styles.appChipName, { color: colors.mutedForeground }]}>{app.name}</Text>
+
+        <View
+          style={[
+            styles.howCard,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          {[
+            {
+              icon: "👁️",
+              title: "مراقبة تلقائية",
+              desc: "يبدأ العداد تلقائياً عند فتح أي تطبيق آخر",
+            },
+            {
+              icon: "⏸️",
+              title: "إيقاف ذكي",
+              desc: "يتوقف العداد فور عودتك لتطبيق ReelsGuard",
+            },
+            {
+              icon: "🔒",
+              title: "قفل تلقائي",
+              desc: "عند انتهاء وقتك تُقفل الشاشة فوراً",
+            },
+            {
+              icon: "🔄",
+              title: "إعادة يومية",
+              desc: "يُصفَّر العداد تلقائياً كل منتصف ليل",
+            },
+          ].map((item) => (
+            <View
+              key={item.title}
+              style={[
+                styles.howRow,
+                { borderBottomColor: colors.border },
+              ]}
+            >
+              <Text style={styles.howIcon}>{item.icon}</Text>
+              <View style={styles.howTextWrap}>
+                <Text
+                  style={[styles.howTitle, { color: colors.foreground }]}
+                >
+                  {item.title}
+                </Text>
+                <Text
+                  style={[
+                    styles.howDesc,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  {item.desc}
+                </Text>
+              </View>
             </View>
           ))}
         </View>
 
-        {/* Guide */}
-        <View style={[styles.guideCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.guideTitle, { color: colors.foreground }]}>كيف يعمل التطبيق</Text>
-          <Text style={[styles.guideText, { color: colors.mutedForeground }]}>
-            {"1. اضغط «بدء جلسة» عند فتح الريلز\n"}
-            {"2. اضغط «إيقاف» عند الانتهاء\n"}
-            {"3. عند انتهاء وقتك اليومي تُقفل الشاشة\n"}
-            {"4. لتغيير الحد اليومي يلزمك اجتياز اختبار الـ 30 سؤال"}
-          </Text>
+        {/* Apps row */}
+        <Text
+          style={[styles.sectionTitle, { color: colors.mutedForeground }]}
+        >
+          التطبيقات المراقبة
+        </Text>
+        <View style={styles.appsRow}>
+          {APPS.map((app) => (
+            <View
+              key={app.name}
+              style={[
+                styles.appChip,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Text style={{ fontSize: 24 }}>{app.emoji}</Text>
+              <Text
+                style={[
+                  styles.appChipName,
+                  { color: colors.mutedForeground },
+                ]}
+              >
+                {app.name}
+              </Text>
+            </View>
+          ))}
         </View>
       </ScrollView>
     </View>
@@ -256,14 +454,19 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  loadingContainer: { flex: 1, alignItems: "center", justifyContent: "center" },
+  loadingContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   loadingText: { fontSize: 16, fontFamily: "Inter_400Regular" },
   scroll: { paddingHorizontal: 20 },
+
   header: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 24,
+    marginBottom: 16,
   },
   appName: {
     fontSize: 26,
@@ -279,106 +482,131 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
   },
+
+  trackingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 18,
+    gap: 8,
+  },
+  trackingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  trackingText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
+    flex: 1,
+  },
+
   timerCard: {
     borderRadius: 24,
-    padding: 28,
+    padding: 24,
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: 14,
     borderWidth: 1,
   },
   timerLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: "Inter_500Medium",
-    marginBottom: 12,
+    marginBottom: 10,
     textTransform: "uppercase",
-    letterSpacing: 1,
+    letterSpacing: 1.2,
   },
   timerText: {
-    fontSize: 58,
+    fontSize: 60,
     fontFamily: "Inter_700Bold",
     letterSpacing: -2,
   },
   limitLabel: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    marginTop: 4,
-    marginBottom: 20,
+    marginTop: 2,
+    marginBottom: 18,
   },
-  progressBar: {
+  progressBg: {
     width: "100%",
     height: 8,
     borderRadius: 4,
     overflow: "hidden",
-    marginBottom: 10,
+    marginBottom: 18,
   },
   progressFill: {
     height: "100%",
     borderRadius: 4,
   },
-  usedLabel: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  sessionBtn: {
+  statsRow: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    height: 60,
-    borderRadius: 18,
+    width: "100%",
+    justifyContent: "space-around",
+  },
+  statItem: { alignItems: "center", flex: 1 },
+  statNum: { fontSize: 22, fontFamily: "Inter_700Bold" },
+  statLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 3,
+    textAlign: "center",
+  },
+  statDivider: { width: 1, marginVertical: 4 },
+
+  warnCard: {
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
     marginBottom: 14,
-    gap: 10,
   },
-  sessionBtnIcon: { fontSize: 18, color: "#fff" },
-  sessionBtnText: {
-    color: "#fff",
-    fontSize: 17,
+  warnText: {
+    fontSize: 14,
     fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
   },
-  liveBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginBottom: 8,
-    gap: 8,
-  },
-  liveDot: { width: 8, height: 8, borderRadius: 4 },
-  liveText: { fontSize: 13, fontFamily: "Inter_500Medium" },
+
   sectionTitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Inter_600SemiBold",
     textTransform: "uppercase",
-    letterSpacing: 1.2,
-    marginBottom: 12,
-    marginTop: 8,
+    letterSpacing: 1.4,
+    marginBottom: 10,
+    marginTop: 4,
   },
+
+  howCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 20,
+    overflow: "hidden",
+  },
+  howRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    gap: 14,
+    borderBottomWidth: 1,
+  },
+  howIcon: { fontSize: 24, width: 32, textAlign: "center" },
+  howTextWrap: { flex: 1 },
+  howTitle: { fontSize: 14, fontFamily: "Inter_600SemiBold", marginBottom: 2 },
+  howDesc: { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
+
   appsRow: {
     flexDirection: "row",
     gap: 10,
-    marginBottom: 20,
     flexWrap: "wrap",
   },
   appChip: {
     flex: 1,
     minWidth: "20%",
     alignItems: "center",
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 16,
     borderWidth: 1,
     gap: 6,
   },
   appChipName: { fontSize: 10, fontFamily: "Inter_500Medium" },
-  guideCard: {
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-  },
-  guideTitle: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
-    marginBottom: 10,
-  },
-  guideText: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 22,
-  },
 });

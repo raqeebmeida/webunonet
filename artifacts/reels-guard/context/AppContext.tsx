@@ -7,8 +7,10 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { AppState, AppStateStatus } from "react-native";
 
-const STORAGE_KEY = "reelsguard_state";
+const STORAGE_KEY = "reelsguard_state_v2";
+const BACKGROUND_START_KEY = "reelsguard_bg_start";
 
 interface StoredState {
   isOnboarded: boolean;
@@ -22,13 +24,10 @@ interface AppContextType {
   isOnboarded: boolean;
   timeLimitMinutes: number;
   usedSeconds: number;
-  isSessionActive: boolean;
   quizBankIndex: number;
   isBlocked: boolean;
   remainingSeconds: number;
   progressPercent: number;
-  startSession: () => void;
-  endSession: () => void;
   setTimeLimitMinutes: (minutes: number) => Promise<void>;
   completeOnboarding: (minutes: number) => Promise<void>;
   advanceQuizBank: () => Promise<void>;
@@ -57,25 +56,93 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [usedSeconds, setUsedSeconds] = useState(0);
   const [lastResetDate, setLastResetDate] = useState(todayString());
   const [quizBankIndex, setQuizBankIndex] = useState(0);
-  const [isSessionActive, setIsSessionActive] = useState(false);
-  const sessionStartRef = useRef<number | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const saveState = useCallback(
-    async (partial: Partial<StoredState>) => {
-      const current: StoredState = {
-        isOnboarded,
-        timeLimitMinutes,
-        usedSeconds,
-        lastResetDate,
-        quizBankIndex,
-        ...partial,
+  // Refs for background tracking (stable references across renders)
+  const usedSecondsRef = useRef(0);
+  const timeLimitMinutesRef = useRef(30);
+  const isOnboardedRef = useRef(false);
+  const lastResetDateRef = useRef(todayString());
+  const quizBankIndexRef = useRef(0);
+  const tickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Keep refs in sync
+  useEffect(() => { usedSecondsRef.current = usedSeconds; }, [usedSeconds]);
+  useEffect(() => { timeLimitMinutesRef.current = timeLimitMinutes; }, [timeLimitMinutes]);
+  useEffect(() => { isOnboardedRef.current = isOnboarded; }, [isOnboarded]);
+  useEffect(() => { lastResetDateRef.current = lastResetDate; }, [lastResetDate]);
+  useEffect(() => { quizBankIndexRef.current = quizBankIndex; }, [quizBankIndex]);
+
+  const persistState = useCallback(
+    async (override?: Partial<StoredState>) => {
+      const state: StoredState = {
+        isOnboarded: isOnboardedRef.current,
+        timeLimitMinutes: timeLimitMinutesRef.current,
+        usedSeconds: usedSecondsRef.current,
+        lastResetDate: lastResetDateRef.current,
+        quizBankIndex: quizBankIndexRef.current,
+        ...override,
       };
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(current));
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     },
-    [isOnboarded, timeLimitMinutes, usedSeconds, lastResetDate, quizBankIndex]
+    []
   );
 
+  // Start real-time tick when app is in background
+  const startTick = useCallback(() => {
+    if (tickIntervalRef.current) return;
+    tickIntervalRef.current = setInterval(() => {
+      setUsedSeconds((prev) => {
+        const next = prev + 1;
+        usedSecondsRef.current = next;
+        return next;
+      });
+    }, 1000);
+  }, []);
+
+  const stopTick = useCallback(async () => {
+    if (tickIntervalRef.current) {
+      clearInterval(tickIntervalRef.current);
+      tickIntervalRef.current = null;
+    }
+    await persistState();
+    await AsyncStorage.removeItem(BACKGROUND_START_KEY);
+  }, [persistState]);
+
+  // Called when app goes to background
+  const handleGoBackground = useCallback(async () => {
+    if (!isOnboardedRef.current) return;
+    const isBlocked = usedSecondsRef.current >= timeLimitMinutesRef.current * 60;
+    if (isBlocked) return;
+    const now = Date.now();
+    await AsyncStorage.setItem(BACKGROUND_START_KEY, String(now));
+    startTick();
+  }, [startTick]);
+
+  // Called when app comes to foreground
+  const handleComeForegroud = useCallback(async () => {
+    stopTick();
+    // Also recover any missed time (in case app was killed while in background)
+    try {
+      const bgStartStr = await AsyncStorage.getItem(BACKGROUND_START_KEY);
+      if (bgStartStr) {
+        const bgStart = Number(bgStartStr);
+        const elapsed = Math.floor((Date.now() - bgStart) / 1000);
+        if (elapsed > 0) {
+          setUsedSeconds((prev) => {
+            const next = prev + elapsed;
+            usedSecondsRef.current = next;
+            return next;
+          });
+        }
+        await AsyncStorage.removeItem(BACKGROUND_START_KEY);
+        await persistState();
+      }
+    } catch {
+      // ignore
+    }
+  }, [stopTick, persistState]);
+
+  // Initial load
   useEffect(() => {
     (async () => {
       try {
@@ -91,11 +158,33 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
         }
 
+        // Check if app was killed while in background
+        const bgStartStr = await AsyncStorage.getItem(BACKGROUND_START_KEY);
+        if (bgStartStr) {
+          const bgStart = Number(bgStartStr);
+          const elapsed = Math.floor((Date.now() - bgStart) / 1000);
+          if (elapsed > 0) {
+            saved.usedSeconds = Math.min(
+              saved.usedSeconds + elapsed,
+              saved.timeLimitMinutes * 60
+            );
+          }
+          await AsyncStorage.removeItem(BACKGROUND_START_KEY);
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+        }
+
         setIsOnboarded(saved.isOnboarded);
         setTimeLimitMinutesState(saved.timeLimitMinutes);
         setUsedSeconds(saved.usedSeconds);
         setLastResetDate(saved.lastResetDate);
         setQuizBankIndex(saved.quizBankIndex);
+
+        // Sync refs
+        usedSecondsRef.current = saved.usedSeconds;
+        timeLimitMinutesRef.current = saved.timeLimitMinutes;
+        isOnboardedRef.current = saved.isOnboarded;
+        lastResetDateRef.current = saved.lastResetDate;
+        quizBankIndexRef.current = saved.quizBankIndex;
       } catch {
         // use defaults
       } finally {
@@ -104,99 +193,90 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
+  // AppState listener for automatic background tracking
+  useEffect(() => {
+    const subscription = AppState.addEventListener(
+      "change",
+      (nextState: AppStateStatus) => {
+        if (nextState === "background" || nextState === "inactive") {
+          handleGoBackground();
+        } else if (nextState === "active") {
+          handleComeForegroud();
+        }
+      }
+    );
+
+    return () => {
+      subscription.remove();
+      if (tickIntervalRef.current) clearInterval(tickIntervalRef.current);
+    };
+  }, [handleGoBackground, handleComeForegroud]);
+
+  // Auto-persist every 15 seconds while app is open
+  useEffect(() => {
+    const saveInterval = setInterval(() => {
+      persistState();
+    }, 15000);
+    return () => clearInterval(saveInterval);
+  }, [persistState]);
+
   const timeLimitSeconds = timeLimitMinutes * 60;
   const remainingSeconds = Math.max(0, timeLimitSeconds - usedSeconds);
   const isBlocked = usedSeconds >= timeLimitSeconds;
   const progressPercent = Math.min(1, usedSeconds / timeLimitSeconds);
 
-  const startSession = useCallback(() => {
-    if (isSessionActive || isBlocked) return;
-    sessionStartRef.current = Date.now();
-    setIsSessionActive(true);
-    intervalRef.current = setInterval(() => {
-      setUsedSeconds((prev) => {
-        const elapsed = sessionStartRef.current
-          ? Math.floor((Date.now() - sessionStartRef.current) / 1000)
-          : 0;
-        return prev + 1;
-      });
-    }, 1000);
-  }, [isSessionActive, isBlocked]);
-
-  const endSession = useCallback(async () => {
-    if (!isSessionActive) return;
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    const elapsed = sessionStartRef.current
-      ? Math.floor((Date.now() - sessionStartRef.current) / 1000)
-      : 0;
-    sessionStartRef.current = null;
-    setIsSessionActive(false);
-    setUsedSeconds((prev) => {
-      const next = prev + elapsed;
-      AsyncStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          isOnboarded,
-          timeLimitMinutes,
-          usedSeconds: next,
-          lastResetDate,
-          quizBankIndex,
-        } as StoredState)
-      );
-      return next;
-    });
-  }, [isSessionActive, isOnboarded, timeLimitMinutes, lastResetDate, quizBankIndex]);
-
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, []);
-
   const setTimeLimitMinutes = useCallback(
     async (minutes: number) => {
       setTimeLimitMinutesState(minutes);
-      await saveState({ timeLimitMinutes: minutes });
+      timeLimitMinutesRef.current = minutes;
+      await persistState({ timeLimitMinutes: minutes });
     },
-    [saveState]
+    [persistState]
   );
 
-  const completeOnboarding = useCallback(
-    async (minutes: number) => {
-      setIsOnboarded(true);
-      setTimeLimitMinutesState(minutes);
-      const today = todayString();
-      setLastResetDate(today);
-      const state: StoredState = {
-        isOnboarded: true,
-        timeLimitMinutes: minutes,
-        usedSeconds: 0,
-        lastResetDate: today,
-        quizBankIndex: 0,
-      };
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    },
-    []
-  );
+  const completeOnboarding = useCallback(async (minutes: number) => {
+    const today = todayString();
+    const state: StoredState = {
+      isOnboarded: true,
+      timeLimitMinutes: minutes,
+      usedSeconds: 0,
+      lastResetDate: today,
+      quizBankIndex: 0,
+    };
+    setIsOnboarded(true);
+    setTimeLimitMinutesState(minutes);
+    setUsedSeconds(0);
+    setLastResetDate(today);
+    setQuizBankIndex(0);
+    isOnboardedRef.current = true;
+    timeLimitMinutesRef.current = minutes;
+    usedSecondsRef.current = 0;
+    lastResetDateRef.current = today;
+    quizBankIndexRef.current = 0;
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }, []);
 
   const advanceQuizBank = useCallback(async () => {
-    const next = (quizBankIndex + 1) % 3;
+    const next = (quizBankIndexRef.current + 1) % 3;
     setQuizBankIndex(next);
-    await saveState({ quizBankIndex: next });
-  }, [quizBankIndex, saveState]);
+    quizBankIndexRef.current = next;
+    await persistState({ quizBankIndex: next });
+  }, [persistState]);
 
   const resetAllData = useCallback(async () => {
-    await AsyncStorage.removeItem(STORAGE_KEY);
+    if (tickIntervalRef.current) clearInterval(tickIntervalRef.current);
+    await AsyncStorage.multiRemove([STORAGE_KEY, BACKGROUND_START_KEY]);
+    const today = todayString();
     setIsOnboarded(false);
     setTimeLimitMinutesState(30);
     setUsedSeconds(0);
-    setLastResetDate(todayString());
+    setLastResetDate(today);
     setQuizBankIndex(0);
-    setIsSessionActive(false);
-    if (intervalRef.current) clearInterval(intervalRef.current);
+    isOnboardedRef.current = false;
+    timeLimitMinutesRef.current = 30;
+    usedSecondsRef.current = 0;
+    lastResetDateRef.current = today;
+    quizBankIndexRef.current = 0;
   }, []);
 
   return (
@@ -205,13 +285,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isOnboarded,
         timeLimitMinutes,
         usedSeconds,
-        isSessionActive,
         quizBankIndex,
         isBlocked,
         remainingSeconds,
         progressPercent,
-        startSession,
-        endSession,
         setTimeLimitMinutes,
         completeOnboarding,
         advanceQuizBank,

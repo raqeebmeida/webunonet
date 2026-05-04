@@ -18,7 +18,6 @@ interface StoredState {
   usedSeconds: number;
   lastResetDate: string;
   quizBankIndex: number;
-  isSessionActive: boolean;
 }
 
 interface AppContextType {
@@ -29,9 +28,6 @@ interface AppContextType {
   isBlocked: boolean;
   remainingSeconds: number;
   progressPercent: number;
-  isSessionActive: boolean;
-  startSession: () => Promise<void>;
-  stopSession: () => Promise<void>;
   setTimeLimitMinutes: (minutes: number) => Promise<void>;
   completeOnboarding: (minutes: number) => Promise<void>;
   advanceQuizBank: () => Promise<void>;
@@ -51,7 +47,6 @@ const DEFAULT_STATE: StoredState = {
   usedSeconds: 0,
   lastResetDate: todayString(),
   quizBankIndex: 0,
-  isSessionActive: false,
 };
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
@@ -61,27 +56,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [usedSeconds, setUsedSeconds] = useState(0);
   const [lastResetDate, setLastResetDate] = useState(todayString());
   const [quizBankIndex, setQuizBankIndex] = useState(0);
-  const [isSessionActive, setIsSessionActive] = useState(false);
 
-  // Stable refs
   const usedSecondsRef = useRef(0);
   const timeLimitMinutesRef = useRef(30);
   const isOnboardedRef = useRef(false);
   const lastResetDateRef = useRef(todayString());
   const quizBankIndexRef = useRef(0);
-  const isSessionActiveRef = useRef(false);
 
   const tickIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // whether timer is currently ticking (app in background & session active)
   const isTickingRef = useRef(false);
 
-  // Keep refs in sync
   useEffect(() => { usedSecondsRef.current = usedSeconds; }, [usedSeconds]);
   useEffect(() => { timeLimitMinutesRef.current = timeLimitMinutes; }, [timeLimitMinutes]);
   useEffect(() => { isOnboardedRef.current = isOnboarded; }, [isOnboarded]);
   useEffect(() => { lastResetDateRef.current = lastResetDate; }, [lastResetDate]);
   useEffect(() => { quizBankIndexRef.current = quizBankIndex; }, [quizBankIndex]);
-  useEffect(() => { isSessionActiveRef.current = isSessionActive; }, [isSessionActive]);
 
   const persistState = useCallback(async (override?: Partial<StoredState>) => {
     const state: StoredState = {
@@ -90,13 +79,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       usedSeconds: usedSecondsRef.current,
       lastResetDate: lastResetDateRef.current,
       quizBankIndex: quizBankIndexRef.current,
-      isSessionActive: isSessionActiveRef.current,
       ...override,
     };
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, []);
 
-  // Start 1-second tick
   const beginTick = useCallback(() => {
     if (isTickingRef.current) return;
     isTickingRef.current = true;
@@ -109,7 +96,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }, 1000);
   }, []);
 
-  // Stop tick and save
   const endTick = useCallback(async () => {
     if (!isTickingRef.current) return;
     isTickingRef.current = false;
@@ -121,22 +107,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.removeItem(BACKGROUND_START_KEY);
   }, [persistState]);
 
-  // Called when app goes to background — only count if session is active
+  // App went to background → start counting automatically
   const handleGoBackground = useCallback(async () => {
-    if (!isSessionActiveRef.current) return;
+    if (!isOnboardedRef.current) return;
     const isBlocked = usedSecondsRef.current >= timeLimitMinutesRef.current * 60;
     if (isBlocked) return;
     await AsyncStorage.setItem(BACKGROUND_START_KEY, String(Date.now()));
     beginTick();
   }, [beginTick]);
 
-  // Called when app comes to foreground — always stop tick
+  // App came to foreground → stop counting automatically
   const handleComeForeground = useCallback(async () => {
     await endTick();
-    // Recover missed seconds if app was killed while ticking
+    // Recover missed seconds if the app was killed while in background
     try {
       const bgStartStr = await AsyncStorage.getItem(BACKGROUND_START_KEY);
-      if (bgStartStr && isSessionActiveRef.current) {
+      if (bgStartStr) {
         const elapsed = Math.floor((Date.now() - Number(bgStartStr)) / 1000);
         if (elapsed > 0) {
           setUsedSeconds((prev) => {
@@ -166,13 +152,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (saved.lastResetDate !== today) {
           saved.usedSeconds = 0;
           saved.lastResetDate = today;
-          // New day — end any active session
-          saved.isSessionActive = false;
+          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
         }
 
-        // Recover background time only if session was active when app died
+        // Recover background time if app was killed while away
         const bgStartStr = await AsyncStorage.getItem(BACKGROUND_START_KEY);
-        if (bgStartStr && saved.isSessionActive) {
+        if (bgStartStr) {
           const elapsed = Math.floor((Date.now() - Number(bgStartStr)) / 1000);
           if (elapsed > 0) {
             saved.usedSeconds = Math.min(
@@ -184,22 +169,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
         }
 
-        // Session ends when user reopens the app (they're back, not watching)
-        saved.isSessionActive = false;
-
         setIsOnboarded(saved.isOnboarded);
         setTimeLimitMinutesState(saved.timeLimitMinutes);
         setUsedSeconds(saved.usedSeconds);
         setLastResetDate(saved.lastResetDate);
         setQuizBankIndex(saved.quizBankIndex);
-        setIsSessionActive(false);
 
         usedSecondsRef.current = saved.usedSeconds;
         timeLimitMinutesRef.current = saved.timeLimitMinutes;
         isOnboardedRef.current = saved.isOnboarded;
         lastResetDateRef.current = saved.lastResetDate;
         quizBankIndexRef.current = saved.quizBankIndex;
-        isSessionActiveRef.current = false;
       } catch {
         // use defaults
       } finally {
@@ -208,7 +188,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
-  // AppState listener
+  // AppState listener — fully automatic, no manual trigger needed
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next: AppStateStatus) => {
       if (next === "background" || next === "inactive") {
@@ -223,7 +203,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
   }, [handleGoBackground, handleComeForeground]);
 
-  // Auto-persist every 15s
+  // Auto-persist every 15 seconds
   useEffect(() => {
     const t = setInterval(() => persistState(), 15000);
     return () => clearInterval(t);
@@ -233,20 +213,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const remainingSeconds = Math.max(0, timeLimitSeconds - usedSeconds);
   const isBlocked = usedSeconds >= timeLimitSeconds;
   const progressPercent = Math.min(1, usedSeconds / timeLimitSeconds);
-
-  const startSession = useCallback(async () => {
-    setIsSessionActive(true);
-    isSessionActiveRef.current = true;
-    await persistState({ isSessionActive: true });
-    // Timer will start via AppState when user leaves this app
-  }, [persistState]);
-
-  const stopSession = useCallback(async () => {
-    await endTick();
-    setIsSessionActive(false);
-    isSessionActiveRef.current = false;
-    await persistState({ isSessionActive: false });
-  }, [endTick, persistState]);
 
   const setTimeLimitMinutes = useCallback(async (minutes: number) => {
     setTimeLimitMinutesState(minutes);
@@ -262,20 +228,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       usedSeconds: 0,
       lastResetDate: today,
       quizBankIndex: 0,
-      isSessionActive: false,
     };
     setIsOnboarded(true);
     setTimeLimitMinutesState(minutes);
     setUsedSeconds(0);
     setLastResetDate(today);
     setQuizBankIndex(0);
-    setIsSessionActive(false);
     isOnboardedRef.current = true;
     timeLimitMinutesRef.current = minutes;
     usedSecondsRef.current = 0;
     lastResetDateRef.current = today;
     quizBankIndexRef.current = 0;
-    isSessionActiveRef.current = false;
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, []);
 
@@ -296,13 +259,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUsedSeconds(0);
     setLastResetDate(today);
     setQuizBankIndex(0);
-    setIsSessionActive(false);
     isOnboardedRef.current = false;
     timeLimitMinutesRef.current = 30;
     usedSecondsRef.current = 0;
     lastResetDateRef.current = today;
     quizBankIndexRef.current = 0;
-    isSessionActiveRef.current = false;
   }, []);
 
   return (
@@ -315,9 +276,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         isBlocked,
         remainingSeconds,
         progressPercent,
-        isSessionActive,
-        startSession,
-        stopSession,
         setTimeLimitMinutes,
         completeOnboarding,
         advanceQuizBank,

@@ -53,26 +53,18 @@ export default function DashboardScreen() {
     usedSeconds,
     timeLimitMinutes,
     progressPercent,
-    isSessionActive,
-    startSession,
-    stopSession,
   } = useApp();
 
   const progressAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const dotAnim = useRef(new Animated.Value(1)).current;
-  const sessionScaleAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    if (!isLoading && !isOnboarded) {
-      router.replace("/onboarding");
-    }
+    if (!isLoading && !isOnboarded) router.replace("/onboarding");
   }, [isLoading, isOnboarded]);
 
   useEffect(() => {
-    if (isBlocked) {
-      router.replace("/blocked");
-    }
+    if (isBlocked) router.replace("/blocked");
   }, [isBlocked]);
 
   useEffect(() => {
@@ -85,49 +77,28 @@ export default function DashboardScreen() {
 
   // Pulse timer when close to limit
   useEffect(() => {
-    if (progressPercent > 0.8) {
-      const pulse = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.04, duration: 600, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-        ])
-      );
-      pulse.start();
-      return () => pulse.stop();
-    }
+    if (progressPercent <= 0.8) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.04, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
   }, [progressPercent > 0.8]);
 
-  // Blinking dot for active session
+  // Blinking green dot — always active
   useEffect(() => {
-    if (!isSessionActive) {
-      dotAnim.setValue(1);
-      return;
-    }
-    const blink = Animated.loop(
+    const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(dotAnim, { toValue: 0.15, duration: 700, useNativeDriver: true }),
-        Animated.timing(dotAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(dotAnim, { toValue: 0.15, duration: 900, useNativeDriver: true }),
+        Animated.timing(dotAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
       ])
     );
-    blink.start();
-    return () => blink.stop();
-  }, [isSessionActive]);
-
-  // Pulse the start button to draw attention
-  useEffect(() => {
-    if (isSessionActive) {
-      sessionScaleAnim.setValue(1);
-      return;
-    }
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(sessionScaleAnim, { toValue: 1.03, duration: 1200, useNativeDriver: true }),
-        Animated.timing(sessionScaleAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
-      ])
-    );
-    pulse.start();
-    return () => pulse.stop();
-  }, [isSessionActive]);
+    loop.start();
+    return () => loop.stop();
+  }, []);
 
   if (isLoading) {
     return (
@@ -178,8 +149,25 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Auto-tracking badge */}
+        <View
+          style={[
+            styles.trackingBadge,
+            { backgroundColor: colors.success + "15", borderColor: colors.success + "30" },
+          ]}
+        >
+          <Animated.View
+            style={[styles.trackingDot, { backgroundColor: colors.success, opacity: dotAnim }]}
+          />
+          <Text style={[styles.trackingText, { color: colors.success }]}>
+            التتبع التلقائي نشط — يراقب وقت الريلز
+          </Text>
+        </View>
+
         {/* Main Timer Card */}
-        <View style={[styles.timerCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View
+          style={[styles.timerCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        >
           <Text style={[styles.timerLabel, { color: colors.mutedForeground }]}>
             الوقت المتبقي اليوم
           </Text>
@@ -255,69 +243,44 @@ export default function DashboardScreen() {
           </View>
         )}
 
-        {/* ── Session Control ── */}
-        {isSessionActive ? (
-          /* ACTIVE SESSION */
-          <View style={[styles.sessionActiveCard, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "40" }]}>
-            <View style={styles.sessionActiveHeader}>
-              <Animated.View style={[styles.sessionDot, { backgroundColor: colors.primary, opacity: dotAnim }]} />
-              <Text style={[styles.sessionActiveTitle, { color: colors.primary }]}>
-                جلسة نشطة — العداد يعمل في الخلفية
-              </Text>
-            </View>
-            <Text style={[styles.sessionActiveDesc, { color: colors.mutedForeground }]}>
-              افتح TikTok أو Instagram أو يوتيوب الآن.{"\n"}
-              سيتوقف العداد تلقائياً عند عودتك هنا.
-            </Text>
-            <TouchableOpacity
-              style={[styles.stopBtn, { backgroundColor: colors.destructive + "20", borderColor: colors.destructive + "50" }]}
-              onPress={async () => {
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                await stopSession();
-              }}
-            >
-              <Text style={[styles.stopBtnText, { color: colors.destructive }]}>
-                ⏹  انتهيت من الريلز
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          /* IDLE — show start button */
-          <Animated.View style={{ transform: [{ scale: sessionScaleAnim }] }}>
-            <TouchableOpacity
-              style={[styles.startBtn, { backgroundColor: colors.primary }]}
-              activeOpacity={0.85}
-              onPress={async () => {
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                await startSession();
-              }}
-            >
-              <Text style={styles.startBtnIcon}>▶</Text>
-              <View>
-                <Text style={styles.startBtnTitle}>ابدأ مشاهدة الريلز</Text>
-                <Text style={styles.startBtnSub}>اضغط ثم افتح تيك توك أو إنستغرام</Text>
-              </View>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-
         {/* How it works */}
         <Text style={[styles.sectionTitle, { color: colors.mutedForeground }]}>
-          كيف يعمل التوقيت
+          كيف يعمل التتبع
         </Text>
 
-        <View style={[styles.howCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View
+          style={[styles.howCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        >
           {[
-            { icon: "▶️", title: "اضغط ابدأ", desc: "قبل فتح أي تطبيق ريلز" },
-            { icon: "📱", title: "اخرج وشاهد", desc: "العداد يحسب وقتك تلقائياً في الخلفية" },
-            { icon: "↩️", title: "ارجع للتطبيق", desc: "العداد يتوقف فوراً عند عودتك هنا" },
-            { icon: "🔒", title: "قفل تلقائي", desc: "عند انتهاء وقتك تُقفل الشاشة فوراً" },
+            {
+              icon: "🚪",
+              title: "اخرج وافتح الريلز",
+              desc: "بمجرد مغادرتك لـ ReelsGuard يبدأ العداد تلقائياً",
+            },
+            {
+              icon: "↩️",
+              title: "ارجع للتطبيق",
+              desc: "العداد يتوقف فوراً عند عودتك هنا",
+            },
+            {
+              icon: "🔒",
+              title: "قفل تلقائي",
+              desc: "عند انتهاء وقتك يُقفل التطبيق فوراً عند عودتك",
+            },
+            {
+              icon: "🌙",
+              title: "إعادة يومية",
+              desc: "يُصفَّر العداد تلقائياً كل منتصف ليل",
+            },
           ].map((item, i, arr) => (
             <View
               key={item.title}
               style={[
                 styles.howRow,
-                { borderBottomColor: colors.border, borderBottomWidth: i < arr.length - 1 ? 1 : 0 },
+                {
+                  borderBottomColor: colors.border,
+                  borderBottomWidth: i < arr.length - 1 ? 1 : 0,
+                },
               ]}
             >
               <Text style={styles.howIcon}>{item.icon}</Text>
@@ -337,10 +300,15 @@ export default function DashboardScreen() {
           {APPS.map((app) => (
             <View
               key={app.name}
-              style={[styles.appChip, { backgroundColor: colors.card, borderColor: colors.border }]}
+              style={[
+                styles.appChip,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
             >
               <Text style={{ fontSize: 24 }}>{app.emoji}</Text>
-              <Text style={[styles.appChipName, { color: colors.mutedForeground }]}>{app.name}</Text>
+              <Text style={[styles.appChipName, { color: colors.mutedForeground }]}>
+                {app.name}
+              </Text>
             </View>
           ))}
         </View>
@@ -359,7 +327,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 18,
+    marginBottom: 16,
   },
   appName: { fontSize: 26, fontFamily: "Inter_700Bold", letterSpacing: -0.5 },
   subtitle: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 2 },
@@ -371,6 +339,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
   },
+
+  trackingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 18,
+    gap: 8,
+  },
+  trackingDot: { width: 8, height: 8, borderRadius: 4 },
+  trackingText: { fontSize: 13, fontFamily: "Inter_500Medium", flex: 1 },
 
   timerCard: {
     borderRadius: 24,
@@ -404,60 +385,16 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: "row", width: "100%", justifyContent: "space-around" },
   statItem: { alignItems: "center", flex: 1 },
   statNum: { fontSize: 22, fontFamily: "Inter_700Bold" },
-  statLabel: { fontSize: 11, fontFamily: "Inter_400Regular", marginTop: 3, textAlign: "center" },
+  statLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+    marginTop: 3,
+    textAlign: "center",
+  },
   statDivider: { width: 1, marginVertical: 4 },
 
   warnCard: { padding: 14, borderRadius: 14, borderWidth: 1, marginBottom: 14 },
   warnText: { fontSize: 14, fontFamily: "Inter_600SemiBold", textAlign: "center" },
-
-  // Session active card
-  sessionActiveCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 20,
-    marginBottom: 20,
-    gap: 10,
-  },
-  sessionActiveHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
-  sessionDot: { width: 10, height: 10, borderRadius: 5 },
-  sessionActiveTitle: { fontSize: 14, fontFamily: "Inter_700Bold", flex: 1 },
-  sessionActiveDesc: { fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 20 },
-  stopBtn: {
-    marginTop: 4,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  stopBtnText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
-
-  // Start button
-  startBtn: {
-    borderRadius: 20,
-    paddingVertical: 20,
-    paddingHorizontal: 24,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 16,
-    marginBottom: 24,
-    shadowColor: "#7C3AED",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  startBtnIcon: { fontSize: 28, color: "#fff" },
-  startBtnTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_700Bold",
-    color: "#fff",
-  },
-  startBtnSub: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-    color: "rgba(255,255,255,0.75)",
-    marginTop: 3,
-  },
 
   sectionTitle: {
     fontSize: 11,
@@ -465,6 +402,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1.4,
     marginBottom: 10,
+    marginTop: 4,
   },
 
   howCard: { borderRadius: 20, borderWidth: 1, marginBottom: 20, overflow: "hidden" },

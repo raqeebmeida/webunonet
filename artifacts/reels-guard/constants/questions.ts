@@ -1,0 +1,115 @@
+export interface Question {
+  id: number;
+  question: string;
+  options: string[];
+  answer: string;
+  difficulty: "easy" | "medium" | "hard";
+}
+
+export const questionBanks: Question[][] = [
+  [
+    { id: 1, question: "15 × 8 = ؟", options: ["100", "110", "120", "130"], answer: "120", difficulty: "easy" },
+    { id: 2, question: "144 ÷ 12 = ؟", options: ["10", "11", "12", "13"], answer: "12", difficulty: "easy" },
+    { id: 3, question: "الجذر التربيعي لـ 169 = ؟", options: ["11", "12", "13", "14"], answer: "13", difficulty: "medium" },
+    { id: 4, question: "7² + 7 = ؟", options: ["42", "49", "56", "63"], answer: "56", difficulty: "medium" },
+    { id: 5, question: "25% من 200 = ؟", options: ["25", "40", "50", "75"], answer: "50", difficulty: "easy" },
+    { id: 6, question: "3³ = ؟", options: ["9", "18", "27", "36"], answer: "27", difficulty: "easy" },
+    { id: 7, question: "(15 + 9) × 2 = ؟", options: ["38", "42", "46", "48"], answer: "48", difficulty: "medium" },
+    { id: 8, question: "1000 ÷ 25 = ؟", options: ["30", "35", "40", "45"], answer: "40", difficulty: "medium" },
+    { id: 9, question: "الجذر التربيعي لـ 256 = ؟", options: ["14", "15", "16", "17"], answer: "16", difficulty: "medium" },
+    { id: 10, question: "17 × 17 = ؟", options: ["269", "279", "289", "299"], answer: "289", difficulty: "hard" },
+    { id: 11, question: "كم دقيقة في اليوم الواحد ؟", options: ["1200", "1380", "1440", "1500"], answer: "1440", difficulty: "medium" },
+    { id: 12, question: "36 × 5 = ؟", options: ["160", "170", "180", "190"], answer: "180", difficulty: "easy" },
+    { id: 13, question: "الجذر التربيعي لـ 225 = ؟", options: ["13", "14", "15", "16"], answer: "15", difficulty: "medium" },
+    { id: 14, question: "48 ÷ 4 + 15 = ؟", options: ["24", "27", "30", "33"], answer: "27", difficulty: "medium" },
+    { id: 15, question: "2⁸ = ؟", options: ["128", "256", "512", "64"], answer: "256", difficulty: "hard" },
+    { id: 16, question: "ناتج 123 × 9 = ؟", options: ["1097", "1107", "1117", "1127"], answer: "1107", difficulty: "hard" },
+    { id: 17, question: "19 × 21 = ؟", options: ["389", "399", "409", "419"], answer: "399", difficulty: "hard" },
+    { id: 18, question: "1000 - 378 = ؟", options: ["612", "622", "632", "642"], answer: "622", difficulty: "medium" },
+    { id: 19, question: "6 × 7 × 8 = ؟", options: ["316", "326", "336", "346"], answer: "336", difficulty: "hard" },
+    { id: 20, question: "كم ثانية في الساعة الواحدة ؟", options: ["3000", "3600", "4200", "4800"], answer: "3600", difficulty: "medium" },
+    { id: 21, question: "75% من 120 = ؟", options: ["80", "85", "90", "95"], answer: "90", difficulty: "medium" },
+    { id: 22, question: "11 × 11 × 11 = ؟", options: ["1231", "1331", "1431", "1531"], answer: "1331", difficulty: "hard" },
+    { id: 23, question: "مجموع زوايا المثلث = ؟ درجة", options: ["90", "150", "180", "360"], answer: "180", difficulty: "easy" },
+    { id: 24, question: "450 ÷ 9 = ؟", options: ["40", "45", "50", "55"], answer: "50", difficulty: "easy" },
+    { id: 25, question: "إذا كان 2x + 6 = 20، فما قيمة x ؟", options: ["5", "6", "7", "8"], answer: "7", difficulty: "medium" },
+    { id: 26, question: "13 × 13 = ؟", options: ["159", "165", "169", "175"], answer: "169", difficulty: "medium" },
+    { id: 27, question: "ما أكبر قاسم مشترك لـ 48 و 36 ؟", options: ["8", "9", "12", "16"], answer: "12", difficulty: "hard" },
+    { id: 28, question: "999 + 1001 = ؟", options: ["1990", "1999", "2000", "2010"], answer: "2000", difficulty: "easy" },
+    { id: 29, question: "إذا كان x + 5 = 13 فما قيمة x ؟", options: ["6", "7", "8", "9"], answer: "8", difficulty: "easy" },
+    { id: 30, question: "الجذر التربيعي لـ 400 = ؟", options: ["18", "19", "20", "21"], answer: "20", difficulty: "easy" },
+  ],
+  [
+    { id: 1, question: "ما عاصمة المملكة العربية السعودية ؟", options: ["جدة", "الرياض", "مكة", "الدمام"], answer: "الرياض", difficulty: "easy" },
+    { id: 2, question: "كم عدد أيام السنة الكبيسة ؟", options: ["364", "365", "366", "367"], answer: "366", difficulty: "easy" },
+    { id: 3, question: "ما رمز عنصر الذهب في الجدول الدوري ؟", options: ["Go", "Gd", "Au", "Ag"], answer: "Au", difficulty: "medium" },
+    { id: 4, question: "ما أعلى قمة جبلية في العالم ؟", options: ["إلبروس", "كيليمنجارو", "إيفرست", "دينالي"], answer: "إيفرست", difficulty: "easy" },
+    { id: 5, question: "في أي سنة بدأت الحرب العالمية الثانية ؟", options: ["1935", "1937", "1939", "1941"], answer: "1939", difficulty: "medium" },
+    { id: 6, question: "ما أكبر محيط في العالم ؟", options: ["الأطلسي", "الهندي", "الهادئ", "المتجمد"], answer: "الهادئ", difficulty: "easy" },
+    { id: 7, question: "ما رمز عنصر الأكسجين ؟", options: ["Ok", "Ox", "O", "Og"], answer: "O", difficulty: "easy" },
+    { id: 8, question: "من هو مؤسس شركة آبل ؟", options: ["بيل غيتس", "إيلون ماسك", "ستيف جوبز", "مارك زوكربرغ"], answer: "ستيف جوبز", difficulty: "easy" },
+    { id: 9, question: "ما أطول نهر في العالم ؟", options: ["الأمازون", "النيل", "المسيسيبي", "يانغتسي"], answer: "النيل", difficulty: "easy" },
+    { id: 10, question: "ما أصغر دولة في العالم ؟", options: ["موناكو", "سان مارينو", "الفاتيكان", "ليختنشتاين"], answer: "الفاتيكان", difficulty: "medium" },
+    { id: 11, question: "ما الغاز الأكثر وفرة في الغلاف الجوي ؟", options: ["الأكسجين", "ثاني أكسيد الكربون", "النيتروجين", "الأرجون"], answer: "النيتروجين", difficulty: "medium" },
+    { id: 12, question: "في أي عام تأسست الأمم المتحدة ؟", options: ["1943", "1944", "1945", "1946"], answer: "1945", difficulty: "medium" },
+    { id: 13, question: "ما أقرب كوكب للشمس ؟", options: ["الزهرة", "عطارد", "المريخ", "الأرض"], answer: "عطارد", difficulty: "easy" },
+    { id: 14, question: "ما رمز عنصر الحديد ؟", options: ["Ir", "Id", "Fe", "Fr"], answer: "Fe", difficulty: "medium" },
+    { id: 15, question: "في أي مدينة تقع أهرامات الجيزة ؟", options: ["القاهرة", "الإسكندرية", "الجيزة", "الأقصر"], answer: "الجيزة", difficulty: "easy" },
+    { id: 16, question: "ما أسرع حيوان بري في العالم ؟", options: ["الأسد", "النمر", "الفهد", "الغزال"], answer: "الفهد", difficulty: "easy" },
+    { id: 17, question: "ما عدد حروف اللغة العربية ؟", options: ["26", "28", "30", "32"], answer: "28", difficulty: "easy" },
+    { id: 18, question: "ما عاصمة أستراليا ؟", options: ["سيدني", "ملبورن", "كانبرا", "بريزبان"], answer: "كانبرا", difficulty: "hard" },
+    { id: 19, question: "ما رمز عنصر الهيدروجين ؟", options: ["Hy", "He", "Ho", "H"], answer: "H", difficulty: "easy" },
+    { id: 20, question: "ما أكبر بلد من حيث المساحة ؟", options: ["كندا", "الصين", "الولايات المتحدة", "روسيا"], answer: "روسيا", difficulty: "easy" },
+    { id: 21, question: "من اخترع الهاتف ؟", options: ["توماس إديسون", "نيكولا تسلا", "ألكسندر غراهام بيل", "غوليلمو ماركوني"], answer: "ألكسندر غراهام بيل", difficulty: "medium" },
+    { id: 22, question: "كم عدد دول مجلس التعاون الخليجي ؟", options: ["4", "5", "6", "7"], answer: "6", difficulty: "easy" },
+    { id: 23, question: "ما عاصمة اليابان ؟", options: ["أوساكا", "كيوتو", "طوكيو", "هيروشيما"], answer: "طوكيو", difficulty: "easy" },
+    { id: 24, question: "ما أبعد كوكب عن الشمس في المجموعة الشمسية ؟", options: ["أورانوس", "زحل", "نبتون", "المشتري"], answer: "نبتون", difficulty: "medium" },
+    { id: 25, question: "من اخترع المصباح الكهربائي ؟", options: ["نيكولا تسلا", "توماس إديسون", "ألبرت أينشتاين", "ماري كوري"], answer: "توماس إديسون", difficulty: "easy" },
+    { id: 26, question: "ما عاصمة البرازيل ؟", options: ["ساو باولو", "ريو دي جانيرو", "برازيليا", "سالفادور"], answer: "برازيليا", difficulty: "hard" },
+    { id: 27, question: "كم عدد كواكب المجموعة الشمسية ؟", options: ["7", "8", "9", "10"], answer: "8", difficulty: "easy" },
+    { id: 28, question: "في أي قارة تقع مصر ؟", options: ["آسيا", "أفريقيا", "أوروبا", "أمريكا"], answer: "أفريقيا", difficulty: "easy" },
+    { id: 29, question: "ما العملة الرسمية لليابان ؟", options: ["اليوان", "الوون", "الين", "البات"], answer: "الين", difficulty: "medium" },
+    { id: 30, question: "من رسم لوحة الموناليزا ؟", options: ["مايكل أنجلو", "رافائيل", "ليوناردو دافنشي", "فيرمير"], answer: "ليوناردو دافنشي", difficulty: "easy" },
+  ],
+  [
+    { id: 1, question: "ما التالي في السلسلة: 2، 4، 8، 16، 32، __ ؟", options: ["48", "56", "64", "72"], answer: "64", difficulty: "easy" },
+    { id: 2, question: "ما التالي في سلسلة فيبوناتشي: 1، 1، 2، 3، 5، 8، 13، __ ؟", options: ["18", "19", "20", "21"], answer: "21", difficulty: "medium" },
+    { id: 3, question: "لو كان 5 رجال يبنون جداراً في 10 أيام، كم يوماً يحتاج 10 رجال ؟", options: ["3", "4", "5", "6"], answer: "5", difficulty: "hard" },
+    { id: 4, question: "كم عدد الشهور التي تحتوي على 28 يوماً على الأقل ؟", options: ["1", "3", "6", "12"], answer: "12", difficulty: "hard" },
+    { id: 5, question: "ما التالي: 1، 4، 9، 16، 25، __ ؟", options: ["30", "34", "36", "40"], answer: "36", difficulty: "easy" },
+    { id: 6, question: "أبو محمد عنده 4 بنات ولكل بنت أخ، كم عدد أبنائه إجمالاً ؟", options: ["4", "5", "8", "9"], answer: "5", difficulty: "medium" },
+    { id: 7, question: "ما التالي: 3، 6، 11، 18، 27، __ ؟", options: ["35", "37", "38", "40"], answer: "38", difficulty: "hard" },
+    { id: 8, question: "إذا كانت اليوم الثلاثاء، فأي يوم يكون بعد 100 يوم ؟", options: ["الإثنين", "الثلاثاء", "الأربعاء", "الخميس"], answer: "الخميس", difficulty: "hard" },
+    { id: 9, question: "ما التالي: J، F، M، A، M، J، __ ؟ (أشهر السنة بالإنجليزية)", options: ["A", "J", "S", "O"], answer: "J", difficulty: "hard" },
+    { id: 10, question: "كم مرة يمكنك طرح 5 من 100 ؟", options: ["مرة واحدة", "5 مرات", "10 مرات", "20 مرات"], answer: "مرة واحدة", difficulty: "hard" },
+    { id: 11, question: "إذا قلبت 68 رأساً على عقب ماذا تحصل ؟", options: ["86", "89", "96", "98"], answer: "89", difficulty: "medium" },
+    { id: 12, question: "ما عدد المثلثات في النجمة السداسية ؟", options: ["4", "6", "8", "12"], answer: "6", difficulty: "hard" },
+    { id: 13, question: "إذا كان كل شهر له 30 يوم، كم يوماً في السنة ؟", options: ["350", "360", "365", "370"], answer: "360", difficulty: "easy" },
+    { id: 14, question: "ما التالي: 2، 6، 18، 54، __ ؟", options: ["108", "126", "162", "216"], answer: "162", difficulty: "medium" },
+    { id: 15, question: "رقم عند إضافة 15 إليه ومضاعفة الناتج يساوي 100، ما هو الرقم ؟", options: ["30", "35", "40", "45"], answer: "35", difficulty: "hard" },
+    { id: 16, question: "ما الرقم الذي يساوي نفسه عند قراءته بالعكس ؟", options: ["121", "123", "125", "127"], answer: "121", difficulty: "medium" },
+    { id: 17, question: "إذا كان A=1، B=2، C=3...، فما قيمة كلمة ACE ؟", options: ["6", "8", "10", "14"], answer: "8", difficulty: "medium" },
+    { id: 18, question: "ما التالي: 100، 50، 25، 12.5، __ ؟", options: ["5", "6.25", "7", "8"], answer: "6.25", difficulty: "medium" },
+    { id: 19, question: "كم عدد الأوجه في المكعب ؟", options: ["4", "5", "6", "8"], answer: "6", difficulty: "easy" },
+    { id: 20, question: "إذا كان نصف نصف عدد ما يساوي 3، فما هو العدد ؟", options: ["6", "9", "12", "15"], answer: "12", difficulty: "medium" },
+    { id: 21, question: "ما التالي: 5، 10، 20، 40، 80، __ ؟", options: ["120", "140", "160", "200"], answer: "160", difficulty: "easy" },
+    { id: 22, question: "كم عدد أضلاع الشكل الثماني الأضلاع ؟", options: ["6", "7", "8", "9"], answer: "8", difficulty: "easy" },
+    { id: 23, question: "رجل في مبنى من 10 طوابق في الطابق الأول. صعد 3 طوابق ونزل 2 وصعد 5. في أي طابق هو ؟", options: ["6", "7", "8", "9"], answer: "7", difficulty: "medium" },
+    { id: 24, question: "ما التالي: 1، 3، 7، 15، 31، __ ؟", options: ["55", "57", "61", "63"], answer: "63", difficulty: "hard" },
+    { id: 25, question: "كم مثلثاً يمكن رسمه داخل مربع بخطوط مستقيمة ؟ (الحد الأدنى)", options: ["2", "3", "4", "8"], answer: "2", difficulty: "medium" },
+    { id: 26, question: "إذا كانت 3 قطط تصطاد 3 فئران في 3 دقائق، كم دقيقة تحتاج قطة واحدة لفأر واحد ؟", options: ["1", "3", "9", "27"], answer: "3", difficulty: "hard" },
+    { id: 27, question: "ما التالي: 1، 8، 27، 64، 125، __ ؟", options: ["196", "210", "216", "225"], answer: "216", difficulty: "hard" },
+    { id: 28, question: "ما عدد الأوجه في الهرم المثلثي ؟", options: ["3", "4", "5", "6"], answer: "4", difficulty: "medium" },
+    { id: 29, question: "إذا ضاعفت عدداً وطرحت 4 حصلت على 20. ما العدد ؟", options: ["10", "11", "12", "13"], answer: "12", difficulty: "medium" },
+    { id: 30, question: "ما التالي: 0، 1، 1، 2، 3، 5، 8، 13، 21، __ ؟", options: ["30", "32", "33", "34"], answer: "34", difficulty: "hard" },
+  ],
+];
+
+export function getShuffledBank(bankIndex: number): Question[] {
+  const bank = [...questionBanks[bankIndex % questionBanks.length]];
+  for (let i = bank.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [bank[i], bank[j]] = [bank[j]!, bank[i]!];
+  }
+  return bank;
+}

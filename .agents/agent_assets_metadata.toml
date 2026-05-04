@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "a4dHxIeF2JtQFMYm62XMT"
+uri = "file://artifacts/reels-guard/assets/images/icon.png"
+type = "image"
+title = "reelsguard app icon"
